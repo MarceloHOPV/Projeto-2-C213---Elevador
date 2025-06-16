@@ -1,0 +1,366 @@
+/* Custom CSS for Elevator Fuzzy Control System */
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* Elevator Panel Styles */
+.elevator-panel {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.elevator-panel .card-body {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+}
+
+.elevator-status {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.direction-indicators {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.direction-up, .direction-down {
+    font-size: 24px;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+.direction-up.active {
+    color: #28a745;
+    text-shadow: 0 0 10px #28a745;
+    animation: pulse 1s infinite;
+}
+
+.direction-down.active {
+    color: #dc3545;
+    text-shadow: 0 0 10px #dc3545;
+    animation: pulse 1s infinite;
+}
+
+.current-floor {
+    font-size: 48px;
+    font-weight: bold;
+    background: #007bff;
+    color: white;
+    border-radius: 10px;
+    padding: 10px 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.status-text {
+    font-size: 14px;
+    color: #ecf0f1;
+    margin-top: 10px;
+}
+
+/* Floor Buttons */
+.floor-buttons {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.btn-floor {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border: 2px solid #2980b9;
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    height: 45px;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-floor:hover {
+    background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+}
+
+.btn-floor:active {
+    transform: translateY(0);
+}
+
+.btn-floor.current {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    border-color: #c0392b;
+    animation: glow 2s infinite;
+}
+
+.btn-floor.passing {
+    background: linear-gradient(135deg, #28a745 0%, #155724 100%);
+    border-color: #155724;
+    animation: passing-glow 1s infinite;
+    box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
+}
+
+@keyframes passing-glow {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(40, 167, 69, 0.8);
+        transform: scale(1.05);
+    }
+}
+
+.btn-ground {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%) !important;
+    border-color: #e67e22 !important;
+}
+
+.btn-ground:hover {
+    background: linear-gradient(135deg, #f5b041 0%, #f39c12 100%) !important;
+}
+
+.btn-floor:disabled {
+    background: #95a5a6 !important;
+    border-color: #7f8c8d !important;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Control Buttons */
+.control-buttons .btn {
+    height: 50px;
+    font-weight: bold;
+    border-radius: 8px;
+}
+
+/* Technical Info */
+.tech-info {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+}
+
+.tech-info div {
+    margin-bottom: 5px;
+}
+
+/* Building Visualization */
+.building-visualization {
+    background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 30%, #90EE90 30%, #90EE90 100%);
+    border-radius: 10px;
+    padding: 20px;
+    min-height: 400px;
+}
+
+.building {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.floor {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.floor.elevator-here {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-color: #28a745;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+.floor.target-floor {
+    border-color: #dc3545;
+    border-width: 3px;
+    border-style: dashed;
+    animation: targetPulse 1.5s infinite;
+}
+
+.floor-label {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.floor-height {
+    font-size: 12px;
+    color: #666;
+}
+
+.elevator-icon {
+    position: absolute;
+    right: 15px;
+    font-size: 20px;
+    color: #ffc107;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Performance Metrics */
+.metrics {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.metric-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #007bff;
+}
+
+.metric-item label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.metric-item span {
+    font-weight: bold;
+    color: #007bff;
+    font-family: 'Courier New', monospace;
+}
+
+/* Cards */
+.card {
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: none;
+    overflow: hidden;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    font-weight: bold;
+    border-bottom: none;
+}
+
+/* Status Bar */
+#status-bar {
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+/* Animations */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+@keyframes glow {
+    0% { box-shadow: 0 0 5px #e74c3c; }
+    50% { box-shadow: 0 0 20px #e74c3c, 0 0 30px #e74c3c; }
+    100% { box-shadow: 0 0 5px #e74c3c; }
+}
+
+@keyframes targetPulse {
+    0% { border-color: #dc3545; }
+    50% { border-color: #ff6b7a; }
+    100% { border-color: #dc3545; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 10px;
+    }
+    
+    .elevator-panel {
+        margin-bottom: 20px;
+    }
+    
+    .current-floor {
+        font-size: 36px;
+        padding: 8px 16px;
+    }
+    
+    .btn-floor {
+        height: 40px;
+        font-size: 16px;
+    }
+    
+    .floor-buttons {
+        padding: 10px;
+    }
+    
+    .building-visualization {
+        min-height: 300px;
+        padding: 15px;
+    }
+}
+
+/* Chart containers */
+#position-chart, #motor-chart {
+    border-radius: 8px;
+    background: white;
+}
+
+/* Connection status */
+#connection-status {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Navbar customization */
+.navbar-brand {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Alert customization */
+.alert {
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+/* Button hover effects */
+.btn:hover {
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* Custom scrollbar for building visualization */
+.building-visualization::-webkit-scrollbar {
+    width: 6px;
+}
+
+.building-visualization::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.building-visualization::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+}
+
+.building-visualization::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
