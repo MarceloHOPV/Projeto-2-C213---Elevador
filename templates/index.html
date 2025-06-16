@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle Fuzzy para Elevador</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row">
+            <div class="col-12">
+                <nav class="navbar navbar-dark bg-primary">
+                    <div class="container-fluid">
+                        <span class="navbar-brand mb-0 h1">
+                            <i class="fas fa-building"></i>
+                            Sistema de Controle Fuzzy para Elevador VILLARTA COMPAQ Slim
+                        </span>
+                        <div class="navbar-nav ms-auto">
+                            <span class="nav-item text-light" id="connection-status">
+                                <i class="fas fa-circle text-success"></i> Conectado
+                            </span>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <!-- Elevator Panel -->
+            <div class="col-md-4">
+                <div class="card elevator-panel">
+                    <div class="card-header bg-dark text-white text-center">                        <h5 class="card-title mb-0">
+                            PAINEL DO ELEVADOR
+                        </h5>
+                        <small>CAPACIDADE 975kg - 13 PASSAGEIROS</small>
+                    </div>
+                    <div class="card-body">
+                        <!-- Status Display -->
+                        <div class="text-center mb-4">
+                            <div class="elevator-status">
+                                <div class="direction-indicators">
+                                    <i class="fas fa-arrow-up direction-up" id="direction-up"></i>
+                                    <span class="current-floor" id="current-floor-display">T</span>
+                                    <i class="fas fa-arrow-down direction-down" id="direction-down"></i>
+                                </div>
+                                <div class="status-text" id="status-text">Parado no Térreo</div>
+                            </div>
+                        </div>
+
+                        <!-- Floor Buttons -->
+                        <div class="floor-buttons">
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <button class="btn btn-floor" data-floor="andar_8" onclick="requestFloor('andar_8')">8</button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-floor" data-floor="andar_5" onclick="requestFloor('andar_5')">5</button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-floor" data-floor="andar_2" onclick="requestFloor('andar_2')">2</button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-floor" data-floor="andar_7" onclick="requestFloor('andar_7')">7</button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-floor" data-floor="andar_4" onclick="requestFloor('andar_4')">4</button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-floor" data-floor="andar_1" onclick="requestFloor('andar_1')">1</button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-floor" data-floor="andar_6" onclick="requestFloor('andar_6')">6</button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-floor" data-floor="andar_3" onclick="requestFloor('andar_3')">3</button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-floor btn-ground" data-floor="terreo" onclick="requestFloor('terreo')">T</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Control Buttons -->
+                        <div class="control-buttons mt-4">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button class="btn btn-danger w-100" onclick="emergencyStop()">
+                                        <i class="fas fa-hand-paper"></i> EMERGÊNCIA
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-secondary w-100" onclick="openDoors()" disabled>
+                                        <i class="fas fa-door-open"></i> PORTA
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Technical Info -->
+                        <div class="tech-info mt-4">
+                            <small class="text-muted">
+                                <div><strong>Posição Atual:</strong> <span id="current-position">4.00m</span></div>
+                                <div><strong>Potência Motor:</strong> <span id="motor-power">0%</span></div>
+                                <div><strong>Erro:</strong> <span id="position-error">0.00m</span></div>
+                            </small>
+                        </div>
+                    </div>
+                    <div class="card-footer text-center">
+                        <small class="text-muted">(35) 62133-6115</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Building Visualization -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">Visualização do Edifício</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="building-visualization" id="building-viz">
+                            <!-- Building floors will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+              </div>
+
+            <!-- Real-time Graphs -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">Posição vs Tempo</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="position-chart" style="height: 300px;"></div>
+                    </div>
+                </div>
+                  <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title">Potência do Motor vs Tempo</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="motor-chart" style="height: 200px;"></div>
+                    </div>
+                </div>
+                
+                <!-- Performance Metrics -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title">Métricas de Performance</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics">
+                            <div class="metric-item">
+                                <label>Tempo de Movimento:</label>
+                                <span id="movement-time">0.00s</span>
+                            </div>
+                            <div class="metric-item">
+                                <label>Erro Final:</label>
+                                <span id="final-error">0.00mm</span>
+                            </div>
+                            <div class="metric-item">
+                                <label>Overshoot:</label>
+                                <span id="overshoot">0.00%</span>
+                            </div>
+                            <div class="metric-item">
+                                <label>Velocidade Média:</label>
+                                <span id="avg-speed">0.00m/s</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="alert alert-info" id="status-bar">
+                    Sistema iniciado. Pronto para operação.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+      <!-- Custom JavaScript -->
+    <script>
+        // WebSocket connection
+        let ws = null;
+        let positionData = [];
+        let motorData = [];
+        let currentFloor = 'terreo';
+        let isMoving = false;
+        let startTime = null;
+        let startPosition = null;
+        let maxOvershoot = 0;
+        let targetPosition = null;
+
+        // Floor mapping
+        const floorMap = {
+            'terreo': 'T',
+            'andar_1': '1',
+            'andar_2': '2',
+            'andar_3': '3',
+            'andar_4': '4',
+            'andar_5': '5',
+            'andar_6': '6',
+            'andar_7': '7',
+            'andar_8': '8'
+        };        const floorPositions = {
+            'terreo': 4,
+            'andar_1': 7,
+            'andar_2': 10,
+            'andar_3': 13,
+            'andar_4': 16,
+            'andar_5': 19,
+            'andar_6': 22,
+            'andar_7': 25,
+            'andar_8': 28
+        };
+
+        function getCurrentFloorFromPosition(position) {
+            // Find the closest floor based on position
+            let closestFloor = 'terreo';
+            let minDistance = Math.abs(position - floorPositions['terreo']);
+            
+            for (const [floor, floorPosition] of Object.entries(floorPositions)) {
+                const distance = Math.abs(position - floorPosition);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestFloor = floor;
+                }
+            }
+            
+            return closestFloor;
+        }
+
+        function updateFloorPanelWithPosition(currentPosition, isMoving) {
+            // Calculate which floor we're currently at or passing through
+            const positionFloor = getCurrentFloorFromPosition(currentPosition);
+            
+            // Update floor buttons with real-time position
+            const buttons = document.querySelectorAll('.btn-floor');
+            buttons.forEach(button => {
+                const floor = button.getAttribute('data-floor');
+                
+                // Remove all previous classes
+                button.classList.remove('current', 'passing');
+                
+                if (isMoving) {
+                    // If moving, show which floor we're currently passing
+                    if (floor === positionFloor) {
+                        button.classList.add('passing');
+                    }
+                } else {
+                    // If stopped, show current floor
+                    if (floor === currentFloor) {
+                        button.classList.add('current');
+                    }
+                }
+                
+                // Disable buttons during movement
+                button.disabled = isMoving;
+            });
+        }
+
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function(event) {
+                console.log('WebSocket connected');
+                updateConnectionStatus(true);
+            };
+            
+            ws.onmessage = function(event) {
+                const message = JSON.parse(event.data);
+                handleWebSocketMessage(message);
+            };
+            
+            ws.onclose = function(event) {
+                console.log('WebSocket disconnected');
+                updateConnectionStatus(false);
+                // Attempt to reconnect after 5 seconds
+                setTimeout(initWebSocket, 5000);
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                updateConnectionStatus(false);
+            };
+        }
+
+        function handleWebSocketMessage(message) {
+            switch(message.type) {
+                case 'position_update':
+                    updatePosition(message.data);
+                    break;
+                case 'status_update':
+                    updateStatus(message.data);
+                    break;
+                case 'initial_status':
+                    updateStatus(message.data);
+                    break;
+                case 'movement_data':
+                    initializeCharts(message.data);
+                    break;
+                case 'floor_request_response':
+                    handleFloorRequestResponse(message);
+                    break;
+                case 'error':
+                    showAlert(message.message, 'danger');
+                    break;
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connection-status');
+            if (connected) {
+                statusElement.innerHTML = '<i class="fas fa-circle text-success"></i> Conectado';
+            } else {
+                statusElement.innerHTML = '<i class="fas fa-circle text-danger"></i> Desconectado';
+            }
+        }        function updatePosition(data) {
+            console.log('DEBUG: Position update received:', data.current_position, 'is_moving:', data.is_moving);
+              // Update position display
+            document.getElementById('current-position').textContent = `${data.current_position.toFixed(2)}m`;
+            document.getElementById('motor-power').textContent = `${Math.abs(data.motor_power).toFixed(1)}%`;
+            document.getElementById('position-error').textContent = `${Math.abs(data.error).toFixed(3)}m`;
+              // Track overshoot during movement
+            if (data.is_moving && targetPosition !== null && startPosition !== null) {
+                // Calculate overshoot: distance beyond target in direction of movement
+                let overshoot = 0;
+                if (startPosition < targetPosition) { // Moving up
+                    overshoot = Math.max(0, data.current_position - targetPosition);
+                } else { // Moving down
+                    overshoot = Math.max(0, targetPosition - data.current_position);
+                }
+                if (overshoot > 0) {
+                    console.log(`Overshoot detected: ${overshoot}m at position ${data.current_position}m (target: ${targetPosition}m)`);
+                }
+                maxOvershoot = Math.max(maxOvershoot, overshoot);
+            }// Add data to charts
+            const timestamp = data.timestamp ? data.timestamp * 1000 : Date.now(); // Convert server timestamp to JS timestamp
+            positionData.push({
+                x: timestamp,
+                y: data.current_position,
+                target: data.target_position
+            });
+              motorData.push({
+                x: timestamp,
+                y: Math.abs(data.motor_power)
+            });
+
+            // Keep only last 100 points
+            if (positionData.length > 100) {
+                positionData = positionData.slice(-100);
+                motorData = motorData.slice(-100);
+            }
+
+            // Update charts
+            updateCharts();
+              // Update building visualization
+            updateBuildingVisualization(data.current_position, data.target_position);
+            
+            // Update movement state from position data if provided
+            const wasMoving = isMoving;
+            if ('is_moving' in data) {
+                isMoving = data.is_moving;
+            }
+              // Track movement time using server timestamps
+            if (data.is_moving && !wasMoving) {
+                startTime = data.timestamp; // Use server timestamp (in seconds)
+                startPosition = data.current_position; // Track starting position
+                targetPosition = data.target_position; // Track target position
+                maxOvershoot = 0; // Reset overshoot tracking
+                console.log(`Movement started: time=${startTime}, position=${startPosition}, target=${targetPosition}`);
+            }else if (!data.is_moving && wasMoving && startTime && data.timestamp && startPosition !== null) {
+                const movementTime = data.timestamp - startTime; // Both in seconds
+                const distanceTraveled = Math.abs(data.current_position - startPosition); // Distance in meters
+                
+                console.log(`Movement ended: time=${data.timestamp}, position=${data.current_position}, duration=${movementTime}s, distance=${distanceTraveled}m`);
+                
+                // Validate movement time (should be between 0.1s and 120s for reasonable elevator movement)
+                if (movementTime > 0.1 && movementTime < 120) {
+                    document.getElementById('movement-time').textContent = `${movementTime.toFixed(1)}s`;
+                    
+                    // Calculate and display average speed
+                    const avgSpeed = distanceTraveled / movementTime; // m/s
+                    console.log(`Average speed calculated: ${avgSpeed} m/s`);
+                    document.getElementById('avg-speed').textContent = `${avgSpeed.toFixed(2)}m/s`;                } else {
+                    console.log(`Invalid movement time: ${movementTime}s`);
+                }
+                
+                // Calculate and display overshoot
+                const overshootPercentage = targetPosition ? (maxOvershoot / Math.abs(targetPosition - startPosition)) * 100 : 0;
+                console.log(`Overshoot calculated: ${maxOvershoot}m (${overshootPercentage.toFixed(2)}%)`);
+                document.getElementById('overshoot').textContent = `${overshootPercentage.toFixed(2)}%`;
+                  document.getElementById('final-error').textContent = `${Math.abs(data.error * 1000).toFixed(1)}mm`;
+                  // Also update the elevator panel error to show the final error (same precision)
+                document.getElementById('position-error').textContent = `${(Math.abs(data.error) * 1000).toFixed(1)}mm`;
+                
+                // Debug: log error calculations
+                console.log(`Final error from data.error: ${Math.abs(data.error * 1000).toFixed(1)}mm`);
+                console.log(`Position error: ${(Math.abs(data.error) * 1000).toFixed(1)}mm`);
+                console.log(`Raw data.error value: ${data.error}`);
+                
+                // Reset tracking variables
+                startTime = null;
+                startPosition = null;
+                targetPosition = null;
+                maxOvershoot = 0;
+            }
+            
+            // Update real-time status text during movement
+            if (data.current_position !== undefined) {
+                const realTimeFloor = getCurrentFloorFromPosition(data.current_position);
+                const realTimeFloorDisplay = floorMap[realTimeFloor];
+                
+                let statusText = '';
+                if (isMoving || data.is_moving) {
+                    const targetFloorDisplay = floorMap[data.target_floor] || data.target_floor;
+                    const direction = data.direction || (data.current_position < data.target_position ? 'up' : 'down');
+                    statusText = `Movendo para ${targetFloorDisplay}º andar (${direction === 'up' ? 'Subindo' : 'Descendo'})`;
+                    
+                    // Show current passing floor during movement
+                    if (realTimeFloorDisplay) {
+                        if (realTimeFloorDisplay === 'T') {
+                            statusText += ` - Passando pelo Térreo`;
+                        } else {
+                            statusText += ` - Passando pelo ${realTimeFloorDisplay}º andar`;
+                        }
+                    }
+                } else {
+                    if (realTimeFloorDisplay === 'T') {
+                        statusText = `Parado no Térreo`;
+                    } else {
+                        statusText = `Parado no ${realTimeFloorDisplay}º andar`;
+                    }
+                }
+                document.getElementById('status-text').textContent = statusText;
+                
+                // Update floor display in the panel
+                const floorDisplay = document.getElementById('current-floor-display');
+                if (floorDisplay) {
+                    floorDisplay.textContent = realTimeFloorDisplay || realTimeFloor;
+                }
+            }
+            
+            // Update floor panel with real-time position
+            updateFloorPanelWithPosition(data.current_position, data.is_moving || isMoving);
+        }        function updateStatus(data) {
+            const wasMoving = isMoving;
+            currentFloor = data.current_floor;
+            isMoving = data.is_moving;            // Track movement time from status updates too
+            if (data.is_moving && !wasMoving && data.timestamp) {
+                startTime = data.timestamp; // Start timing movement
+                // Try to get starting position from status data or use current status
+                startPosition = data.current_position || floorPositions[currentFloor] || 4.0;
+                console.log(`Status: Movement started: time=${startTime}, position=${startPosition}`);
+            } else if (!data.is_moving && wasMoving && startTime && data.timestamp) {
+                const movementTime = data.timestamp - startTime;
+                console.log(`Status: Movement ended: time=${data.timestamp}, position=${data.current_position}, duration=${movementTime}s`);
+                
+                // Validate movement time (should be between 0.1s and 120s for reasonable elevator movement)
+                if (movementTime > 0.1 && movementTime < 120) {
+                    document.getElementById('movement-time').textContent = `${movementTime.toFixed(1)}s`;
+                    
+                    // Calculate average speed if we have position data
+                    if (startPosition !== null && data.current_position !== undefined) {
+                        const distanceTraveled = Math.abs(data.current_position - startPosition);
+                        const avgSpeed = distanceTraveled / movementTime;
+                        console.log(`Status: Average speed calculated: ${avgSpeed} m/s`);
+                        document.getElementById('avg-speed').textContent = `${avgSpeed.toFixed(2)}m/s`;
+                    } else {
+                        console.log(`Status: Cannot calculate speed - missing position data`);
+                    }
+                } else {
+                    console.log(`Status: Invalid movement time: ${movementTime}s`);
+                }
+                // Don't update final error here since status updates don't have error data
+                
+                // Reset tracking variables
+                startTime = null;
+                startPosition = null;
+            }
+            
+            // Update floor display
+            const floorDisplay = document.getElementById('current-floor-display');
+            floorDisplay.textContent = floorMap[currentFloor] || currentFloor;
+            
+            // Update direction indicators
+            const upArrow = document.getElementById('direction-up');
+            const downArrow = document.getElementById('direction-down');
+            
+            upArrow.classList.toggle('active', data.direction === 'up');
+            downArrow.classList.toggle('active', data.direction === 'down');
+            
+            // Update status text
+            let statusText = '';
+            if (isMoving) {
+                const targetFloorDisplay = floorMap[data.target_floor] || data.target_floor;
+                statusText = `Movendo para ${targetFloorDisplay}º andar (${data.direction === 'up' ? 'Subindo' : 'Descendo'})`;
+            } else {
+                statusText = `Parado no ${floorMap[currentFloor] === 'T' ? 'Térreo' : floorMap[currentFloor] + 'º andar'}`;
+            }
+            document.getElementById('status-text').textContent = statusText;
+              // Update floor buttons with current position if available
+            if ('current_position' in data) {
+                updateFloorPanelWithPosition(data.current_position, data.is_moving);
+            } else {
+                // Fallback to the old method if position not available
+                updateFloorButtons();
+            }
+            
+            console.log('Status update:', data.is_moving ? 'MOVING' : 'STOPPED', 'Floor:', currentFloor);
+        }
+
+        function updateFloorButtons() {
+            const buttons = document.querySelectorAll('.btn-floor');
+            buttons.forEach(button => {
+                const floor = button.getAttribute('data-floor');
+                button.classList.toggle('current', floor === currentFloor);
+                button.disabled = isMoving;
+            });
+        }
+
+        function requestFloor(floor) {
+            if (ws && ws.readyState === WebSocket.OPEN && !isMoving) {
+                ws.send(JSON.stringify({
+                    type: 'floor_request',
+                    floor: floor
+                }));
+                showAlert(`Solicitação para ${floorMap[floor] === 'T' ? 'Térreo' : floorMap[floor] + 'º andar'} enviada`, 'info');
+            }
+        }
+
+        function emergencyStop() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'emergency_stop'
+                }));
+                showAlert('Parada de emergência ativada!', 'warning');
+            }
+        }
+
+        function openDoors() {
+            showAlert('Função de porta não implementada nesta versão', 'info');
+        }
+
+        function showAlert(message, type) {
+            const statusBar = document.getElementById('status-bar');
+            statusBar.className = `alert alert-${type}`;
+            statusBar.textContent = message;
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusBar.className = 'alert alert-info';
+                statusBar.textContent = 'Sistema operacional.';
+            }, 5000);
+        }
+
+        function initializeCharts(data) {
+            // Initialize position chart
+            const positionTrace = {
+                x: data.map(d => new Date(d.timestamp * 1000)),
+                y: data.map(d => d.position),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Posição',
+                line: {color: '#007bff'}
+            };
+
+            const targetTrace = {
+                x: data.map(d => new Date(d.timestamp * 1000)),
+                y: data.map(d => d.target_position),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Alvo',
+                line: {color: '#dc3545', dash: 'dash'}
+            };
+
+            const positionLayout = {
+                title: '',
+                xaxis: {title: 'Tempo'},
+                yaxis: {title: 'Posição (m)'},
+                margin: {t: 20, r: 20, b: 40, l: 50},
+                showlegend: true,
+                legend: {x: 0, y: 1}
+            };
+
+            Plotly.newPlot('position-chart', [positionTrace, targetTrace], positionLayout);
+
+            // Initialize motor chart
+            const motorTrace = {
+                x: data.map(d => new Date(d.timestamp * 1000)),
+                y: data.map(d => Math.abs(d.motor_power)),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Potência',
+                line: {color: '#28a745'}
+            };
+
+            const motorLayout = {
+                title: '',
+                xaxis: {title: 'Tempo'},
+                yaxis: {title: 'Potência (%)'},
+                margin: {t: 20, r: 20, b: 40, l: 50}
+            };
+
+            Plotly.newPlot('motor-chart', [motorTrace], motorLayout);
+        }
+
+        function updateCharts() {
+            if (positionData.length > 0) {
+                const times = positionData.map(d => new Date(d.x));
+                const positions = positionData.map(d => d.y);
+                const targets = positionData.map(d => d.target);
+                const motorPowers = motorData.map(d => d.y);
+
+                Plotly.restyle('position-chart', {
+                    x: [times, times],
+                    y: [positions, targets]
+                });
+
+                Plotly.restyle('motor-chart', {
+                    x: [times],
+                    y: [motorPowers]
+                });
+            }
+        }        function updateBuildingVisualization(currentPos, targetPos) {
+            console.log('DEBUG: Updating building visualization - pos:', currentPos, 'target:', targetPos);
+            
+            const buildingViz = document.getElementById('building-viz');
+            let html = '<div class="building">';
+            
+            const floors = ['Técnico', '8', '7', '6', '5', '4', '3', '2', '1', 'T', 'Subsolo'];
+            const floorHeights = [32, 28, 25, 22, 19, 16, 13, 10, 7, 4, 0];
+            
+            floors.forEach((floor, index) => {
+                const height = floorHeights[index];
+                const isElevatorHere = Math.abs(currentPos - height) < 1.5;
+                const isTarget = Math.abs(targetPos - height) < 1.5;
+                
+                html += `<div class="floor ${isElevatorHere ? 'elevator-here' : ''} ${isTarget ? 'target-floor' : ''}">
+                    <span class="floor-label">${floor}</span>
+                    <span class="floor-height">${height}m</span>
+                    ${isElevatorHere ? '<i class="fas fa-square elevator-icon"></i>' : ''}
+                </div>`;
+            });
+              html += '</div>';
+            buildingViz.innerHTML = html;
+        }
+
+        function handleFloorRequestResponse(message) {
+            // Handle floor request response
+            console.log('Floor request response:', message);
+            if (message.status === 'success') {
+                showAlert('Solicitação de andar enviada com sucesso!', 'success');
+            } else {
+                showAlert('Erro ao solicitar andar: ' + (message.message || 'Erro desconhecido'), 'danger');
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initWebSocket();
+            initializeCharts([]);
+            updateBuildingVisualization(4, 4);
+        });
+    </script>
+</body>
+</html>

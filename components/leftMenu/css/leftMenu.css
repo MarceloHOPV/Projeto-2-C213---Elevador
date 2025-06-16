@@ -1,0 +1,37 @@
+#leftMenuContainer {
+    background-color: #f8f9fa; /* Cor de fundo suave */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Leve sombra */
+}
+
+#leftMenuContainer h3 {
+    font-size: 18px;
+    color: #343a40; /* Cinza escuro */
+    margin-bottom: 15px;
+}
+
+#leftMenuContainer input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ced4da; /* Borda cinza clara */
+    border-radius: 4px;
+}
+
+#leftMenuContainer button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    background-color: #007bff; /* Azul */
+    color: #ffffff; /* Branco */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#leftMenuContainer button:hover {
+    background-color: #0056b3; /* Azul mais escuro */
+}
