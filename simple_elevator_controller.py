@@ -131,36 +131,35 @@ class SimpleElevatorController:
                         print(f"Target reached with stable position. Final error: {abs(current_error)*1000:.1f}mm")
                         break
                 else:
-                    stable_count = 0
-                  # Check if we're in the Linear Acceleration System phase (first 2 seconds)
+                    stable_count = 0                # Check if we're in the Linear Acceleration System phase (first 2 seconds)
                 elapsed_time = time.time() - movement_start_time
                 startup_power = self.controller.compute_startup_power(elapsed_time, startup_direction)
                 
                 if startup_power is not None:
                     # Linear Acceleration System active (0-2 seconds)
-                    # Use fixed startup direction, don't update self.direction during startup
-                    motor_power = abs(startup_power)
-                    print(f"Startup phase: {elapsed_time:.1f}s, power: {motor_power:.1f}% (direction: {startup_direction})")
+                    motor_power = startup_power  # startup_power already has the correct sign
+                    print(f"Startup phase: {elapsed_time:.1f}s, power: {abs(motor_power):.1f}%, direction: {startup_direction}")
                 else:
-                    # Normal fuzzy control (after 2 seconds) - now we can update direction
-                    # Update direction based on current error (allows correction if overshot)
-                    old_direction = self.direction
-                    self.direction = 1 if current_error > 0 else -1
-                    # Detect direction change (overshoot)
-                    if old_direction != 0 and old_direction != self.direction:
-                        print(f"Direction change detected (overshoot), error: {current_error*1000:.1f}mm")
+                    # Normal fuzzy control (after 2 seconds) - now returns power with sign
                     motor_power, fuzzy_error = self.controller.compute_control(
                         self.current_position, 
                         self.target_position, 
                         self.previous_error
                     )
+                    
+                    # Update direction based on power sign (allows correction if overshot)
+                    old_direction = self.direction
+                    self.direction = 1 if motor_power > 0 else -1
+                    
+                    # Detect direction change (overshoot)
+                    if old_direction != 0 and old_direction != self.direction:
+                        print(f"Direction change detected (overshoot), power: {abs(motor_power):.1f}%, new direction: {self.direction}")
                 
                 # Force stop if error is very small
                 if abs(current_error) <= tolerance:
                     motor_power = 0
                     print(f"Forcing stop - within tolerance")
-                
-                # Apply minimum motor power threshold to avoid very slow movements
+                  # Apply minimum motor power threshold to avoid very slow movements
                 elif abs(motor_power) < 3.0:  # Below 3% motor power
                     if abs(current_error) > tolerance * 2:  # Only if significantly far from target
                         motor_power = 3.0 * (1 if current_error > 0 else -1)
@@ -168,14 +167,19 @@ class SimpleElevatorController:
                     else:
                         motor_power = 0  # Stop if close to target and low power
                         print(f"Low power and close to target - stopping")
-                  # Update position
+                
+                # Update position - motor_power now has the correct sign
                 old_position = self.current_position
-                # Use startup direction during startup phase, otherwise use current direction
-                current_direction = startup_direction if startup_power is not None else self.direction
+                # For startup phase, use startup direction; otherwise, extract direction from power sign
+                if startup_power is not None:
+                    current_direction = startup_direction
+                else:
+                    current_direction = 1 if motor_power > 0 else -1
+                
                 self.current_position = self.controller.update_position(
                     self.current_position, 
-                    motor_power, 
-                    current_direction
+                    motor_power,  # Already has correct sign
+                    current_direction  # But still pass direction for k1 calculation
                 )
                 
                 # Track actual movement
@@ -210,26 +214,25 @@ class SimpleElevatorController:
                 
                 # Update previous error
                 self.previous_error = current_error
-                
-                # Create position update message
+                  # Create position update message
                 position_data = {
                     'timestamp': time.time(),
                     'current_position': self.current_position,
                     'target_position': self.target_position,
                     'current_floor': self._get_nearest_floor(),
                     'target_floor': self.target_floor,
-                    'motor_power': motor_power,
+                    'motor_power': motor_power,  # Now includes proper sign
                     'error': current_error,
-                    'direction': 'up' if current_direction > 0 else 'down',
+                    'direction': 'up' if motor_power > 0 else ('down' if motor_power < 0 else 'stopped'),
                     'is_moving': True
                 }
                 
                 # Call position callback if set
                 self._safe_callback(self.position_callback, position_data)
-                
-                # Print progress
+                  # Print progress - show power as positive, direction separately
                 if iteration % 10 == 0:  # Print every 2 seconds
-                    print(f"Position: {self.current_position:.2f}m, Motor: {motor_power:.1f}%, Error: {current_error*1000:.1f}mm")
+                    direction_str = "up" if motor_power > 0 else ("down" if motor_power < 0 else "stopped")
+                    print(f"Position: {self.current_position:.2f}m, Motor: {abs(motor_power):.1f}%, Error: {current_error*1000:+.1f}mm, Dir: {direction_str}")
                 
                 iteration += 1
                 time.sleep(self.controller.sampling_time)

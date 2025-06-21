@@ -28,15 +28,14 @@ class ElevatorFuzzyController:
         self.max_passengers = 13        # Control parameters
         self.sampling_time = 0.2  # 200ms
         self.k1_up = 1.0  # adjustment constant for upward movement
-        self.k1_down = -1.0  # adjustment constant for downward movement        
+        self.k1_down = 1.0  # adjustment constant for downward movement (same as up)
         self.k2 = 0.251287  # power to position increment conversion factor (from PDF specification)
         self.decay_factor = 0.999  # decay factor from specification (0.999 not 0.9995)
         
         # Linear Acceleration System parameters (from PDF Figure 3)
         self.startup_duration = 2.0  # 2 seconds startup ramp
         self.startup_max_power = 31.5  # 31.5% maximum power during startup
-        
-        # Floor positions (height from ground level)
+          # Floor positions (height from ground level)
         self.floor_positions = self._calculate_floor_positions()
         
         # Initialize fuzzy system
@@ -47,34 +46,29 @@ class ElevatorFuzzyController:
         positions = {}
         positions['subsolo'] = 0
         positions['terreo'] = 4
-        
-        for i in range(1, 9):
-            positions[f'andar_{i}'] = 4 + (i * 3)  # terreo + floor_height * floor_number
+          # 1º andar = terreo(4m) + altura do 1º andar(4m) = 8m
+        # Demais andares: 3m cada um após o 1º andar
+        positions['andar_1'] = 8  # Terreo(4m) + 1º andar(4m)
+        for i in range(2, 9):
+            positions[f'andar_{i}'] = 8 + ((i-1) * 3)  # 1º andar(8m) + andares extras(3m cada)
             
-        positions['tecnico'] = 4 + (8 * 3) + 4  # 32m
+        positions['tecnico'] = 8 + (7 * 3) + 3  # 1º andar(8m) + 7 andares(21m) + técnico(3m) = 32m
         
         return positions
     
     def _setup_fuzzy_system(self):
         """Setup the fuzzy control system with membership functions and rules"""
-        
-        # Define input and output variables
-        # Error range: considering maximum building height displacement
-        self.error = ctrl.Antecedent(np.arange(-36, 37, 1), 'error')
+          # Define input and output variables        # Error range: considering maximum building height displacement (0 to 36m)
+        self.error = ctrl.Antecedent(np.arange(0, 37, 1), 'error')
         
         # Delta error range: rate of change of error
         self.delta_error = ctrl.Antecedent(np.arange(-10, 11, 1), 'delta_error')
           # Motor power output: 0-100%
-        self.motor_power = ctrl.Consequent(np.arange(0, 101, 1), 'motor_power')
-        
-        # Define membership functions for error (values near k2=0.212312 for better control)
-        self.error['negative_large'] = fuzz.trimf(self.error.universe, [-36, -12, -1])
-        self.error['negative_medium'] = fuzz.trimf(self.error.universe, [-3, -0.8, -0.2])
-        self.error['negative_small'] = fuzz.trimf(self.error.universe, [-0.5, -0.21, -0.05])
-        self.error['zero'] = fuzz.trimf(self.error.universe, [-0.1, 0, 0.1])
-        self.error['positive_small'] = fuzz.trimf(self.error.universe, [0.05, 0.21, 0.5])
-        self.error['positive_medium'] = fuzz.trimf(self.error.universe, [0.2, 0.8, 3])
-        self.error['positive_large'] = fuzz.trimf(self.error.universe, [1, 12, 36])
+        self.motor_power = ctrl.Consequent(np.arange(0, 101, 1), 'motor_power')        # Define membership functions for error (0 to 36m range) - ajustado para mais sensibilidade
+        self.error['very_small'] = fuzz.trimf(self.error.universe, [0, 0, 0.1])
+        self.error['small'] = fuzz.trimf(self.error.universe, [0.05, 0.21, 0.5])
+        self.error['medium'] = fuzz.trimf(self.error.universe, [0.2, 1.5, 5])
+        self.error['large'] = fuzz.trimf(self.error.universe, [3, 18, 36])
         
         # Define membership functions for delta error (scaled proportionally to k2)
         self.delta_error['negative_large'] = fuzz.trimf(self.delta_error.universe, [-10, -3, -0.5])
@@ -82,14 +76,14 @@ class ElevatorFuzzyController:
         self.delta_error['zero'] = fuzz.trimf(self.delta_error.universe, [-0.1, 0, 0.1])
         self.delta_error['positive_small'] = fuzz.trimf(self.delta_error.universe, [0.05, 0.21, 1])
         self.delta_error['positive_large'] = fuzz.trimf(self.delta_error.universe, [0.5, 3, 10])
-          # Define membership functions for motor power (more aggressive for precision)
-        self.motor_power['very_low'] = fuzz.trimf(self.motor_power.universe, [0, 2, 8])
-        self.motor_power['low'] = fuzz.trimf(self.motor_power.universe, [5, 15, 30])
-        self.motor_power['medium'] = fuzz.trimf(self.motor_power.universe, [25, 45, 65])
-        self.motor_power['high'] = fuzz.trimf(self.motor_power.universe, [60, 75, 85])
-        self.motor_power['very_high'] = fuzz.trimf(self.motor_power.universe, [80, 88, 90])
         
-        # Define fuzzy rules for PD control
+        # Define membership functions for motor power (otimizado para alcançar ~90% em casos extremos)
+        self.motor_power['very_low'] = fuzz.trimf(self.motor_power.universe, [0, 2, 8])
+        self.motor_power['low'] = fuzz.trimf(self.motor_power.universe, [5, 20, 40])
+        self.motor_power['medium'] = fuzz.trimf(self.motor_power.universe, [35, 55, 75])
+        self.motor_power['high'] = fuzz.trimf(self.motor_power.universe, [65, 78, 88])
+        self.motor_power['very_high'] = fuzz.trimf(self.motor_power.universe, [75, 85, 95])
+          # Define fuzzy rules for PD control
         self._setup_fuzzy_rules()
         
         # Create control system
@@ -97,53 +91,37 @@ class ElevatorFuzzyController:
         self.simulation = ctrl.ControlSystemSimulation(self.control_system)
     
     def _setup_fuzzy_rules(self):
-        """Define the fuzzy rules for the PD controller with smooth transitions"""
+        """Define the fuzzy rules for the PD controller with updated error categories"""
         self.rules = []
         
-        # Rules for positive error (need to go up) - with smooth transitions
-        self.rules.append(ctrl.Rule(self.error['positive_large'] & self.delta_error['positive_large'], self.motor_power['very_high']))
-        self.rules.append(ctrl.Rule(self.error['positive_large'] & self.delta_error['positive_small'], self.motor_power['high']))
-        self.rules.append(ctrl.Rule(self.error['positive_large'] & self.delta_error['zero'], self.motor_power['high']))
-        self.rules.append(ctrl.Rule(self.error['positive_large'] & self.delta_error['negative_small'], self.motor_power['medium']))
-        self.rules.append(ctrl.Rule(self.error['positive_large'] & self.delta_error['negative_large'], self.motor_power['medium']))  # Changed from low to medium
+        # Rules for different error magnitudes (all positive since error is now 0-36)
         
-        self.rules.append(ctrl.Rule(self.error['positive_medium'] & self.delta_error['positive_large'], self.motor_power['high']))
-        self.rules.append(ctrl.Rule(self.error['positive_medium'] & self.delta_error['positive_small'], self.motor_power['medium']))
-        self.rules.append(ctrl.Rule(self.error['positive_medium'] & self.delta_error['zero'], self.motor_power['medium']))
-        self.rules.append(ctrl.Rule(self.error['positive_medium'] & self.delta_error['negative_small'], self.motor_power['low']))
-        self.rules.append(ctrl.Rule(self.error['positive_medium'] & self.delta_error['negative_large'], self.motor_power['low']))  # Changed from very_low to low
+        # Very small error (close to target)
+        self.rules.append(ctrl.Rule(self.error['very_small'] & self.delta_error['positive_large'], self.motor_power['low']))
+        self.rules.append(ctrl.Rule(self.error['very_small'] & self.delta_error['positive_small'], self.motor_power['very_low']))
+        self.rules.append(ctrl.Rule(self.error['very_small'] & self.delta_error['zero'], self.motor_power['very_low']))
+        self.rules.append(ctrl.Rule(self.error['very_small'] & self.delta_error['negative_small'], self.motor_power['very_low']))
+        self.rules.append(ctrl.Rule(self.error['very_small'] & self.delta_error['negative_large'], self.motor_power['very_low']))
         
-        self.rules.append(ctrl.Rule(self.error['positive_small'] & self.delta_error['positive_large'], self.motor_power['medium']))
-        self.rules.append(ctrl.Rule(self.error['positive_small'] & self.delta_error['positive_small'], self.motor_power['low']))
-        self.rules.append(ctrl.Rule(self.error['positive_small'] & self.delta_error['zero'], self.motor_power['low']))
-        self.rules.append(ctrl.Rule(self.error['positive_small'] & self.delta_error['negative_small'], self.motor_power['very_low']))
-        self.rules.append(ctrl.Rule(self.error['positive_small'] & self.delta_error['negative_large'], self.motor_power['very_low']))
+        # Small error
+        self.rules.append(ctrl.Rule(self.error['small'] & self.delta_error['positive_large'], self.motor_power['medium']))
+        self.rules.append(ctrl.Rule(self.error['small'] & self.delta_error['positive_small'], self.motor_power['low']))
+        self.rules.append(ctrl.Rule(self.error['small'] & self.delta_error['zero'], self.motor_power['low']))
+        self.rules.append(ctrl.Rule(self.error['small'] & self.delta_error['negative_small'], self.motor_power['very_low']))
+        self.rules.append(ctrl.Rule(self.error['small'] & self.delta_error['negative_large'], self.motor_power['very_low']))
         
-        # Rules for negative error (need to go down) - with smooth transitions
-        self.rules.append(ctrl.Rule(self.error['negative_large'] & self.delta_error['negative_large'], self.motor_power['very_high']))
-        self.rules.append(ctrl.Rule(self.error['negative_large'] & self.delta_error['negative_small'], self.motor_power['high']))
-        self.rules.append(ctrl.Rule(self.error['negative_large'] & self.delta_error['zero'], self.motor_power['high']))
-        self.rules.append(ctrl.Rule(self.error['negative_large'] & self.delta_error['positive_small'], self.motor_power['medium']))
-        self.rules.append(ctrl.Rule(self.error['negative_large'] & self.delta_error['positive_large'], self.motor_power['medium']))  # Changed from low to medium
-        
-        self.rules.append(ctrl.Rule(self.error['negative_medium'] & self.delta_error['negative_large'], self.motor_power['high']))
-        self.rules.append(ctrl.Rule(self.error['negative_medium'] & self.delta_error['negative_small'], self.motor_power['medium']))
-        self.rules.append(ctrl.Rule(self.error['negative_medium'] & self.delta_error['zero'], self.motor_power['medium']))
-        self.rules.append(ctrl.Rule(self.error['negative_medium'] & self.delta_error['positive_small'], self.motor_power['low']))
-        self.rules.append(ctrl.Rule(self.error['negative_medium'] & self.delta_error['positive_large'], self.motor_power['low']))  # Changed from very_low to low
-        
-        self.rules.append(ctrl.Rule(self.error['negative_small'] & self.delta_error['negative_large'], self.motor_power['medium']))
-        self.rules.append(ctrl.Rule(self.error['negative_small'] & self.delta_error['negative_small'], self.motor_power['low']))
-        self.rules.append(ctrl.Rule(self.error['negative_small'] & self.delta_error['zero'], self.motor_power['low']))
-        self.rules.append(ctrl.Rule(self.error['negative_small'] & self.delta_error['positive_small'], self.motor_power['very_low']))
-        self.rules.append(ctrl.Rule(self.error['negative_small'] & self.delta_error['positive_large'], self.motor_power['very_low']))
-        
-        # Rules for zero error - smooth and gentle
-        self.rules.append(ctrl.Rule(self.error['zero'] & self.delta_error['negative_large'], self.motor_power['low']))
-        self.rules.append(ctrl.Rule(self.error['zero'] & self.delta_error['negative_small'], self.motor_power['very_low']))
-        self.rules.append(ctrl.Rule(self.error['zero'] & self.delta_error['zero'], self.motor_power['very_low']))
-        self.rules.append(ctrl.Rule(self.error['zero'] & self.delta_error['positive_small'], self.motor_power['very_low']))
-        self.rules.append(ctrl.Rule(self.error['zero'] & self.delta_error['positive_large'], self.motor_power['low']))
+        # Medium error
+        self.rules.append(ctrl.Rule(self.error['medium'] & self.delta_error['positive_large'], self.motor_power['high']))
+        self.rules.append(ctrl.Rule(self.error['medium'] & self.delta_error['positive_small'], self.motor_power['medium']))
+        self.rules.append(ctrl.Rule(self.error['medium'] & self.delta_error['zero'], self.motor_power['medium']))
+        self.rules.append(ctrl.Rule(self.error['medium'] & self.delta_error['negative_small'], self.motor_power['low']))
+        self.rules.append(ctrl.Rule(self.error['medium'] & self.delta_error['negative_large'], self.motor_power['low']))
+          # Large error (far from target)
+        self.rules.append(ctrl.Rule(self.error['large'] & self.delta_error['positive_large'], self.motor_power['very_high']))
+        self.rules.append(ctrl.Rule(self.error['large'] & self.delta_error['positive_small'], self.motor_power['very_high']))
+        self.rules.append(ctrl.Rule(self.error['large'] & self.delta_error['zero'], self.motor_power['very_high']))
+        self.rules.append(ctrl.Rule(self.error['large'] & self.delta_error['negative_small'], self.motor_power['medium']))
+        self.rules.append(ctrl.Rule(self.error['large'] & self.delta_error['negative_large'], self.motor_power['medium']))
     
     def get_floor_position(self, floor_name: str) -> float:
         """Get the position of a specific floor"""
@@ -171,8 +149,7 @@ class ElevatorFuzzyController:
         # Linear ramp: 0% → 31.5% over 2 seconds
         # P(t) = (31.5% / 2s) * t = 15.75 * t
         startup_power = (self.startup_max_power / self.startup_duration) * elapsed_time
-        
-        # Apply direction (positive for up, negative for down)
+          # Apply direction (positive for up, negative for down)
         return startup_power * direction
     
     def compute_control(self, current_position: float, target_position: float, previous_error: float) -> Tuple[float, float]:
@@ -185,43 +162,64 @@ class ElevatorFuzzyController:
             previous_error: Previous error value for delta calculation
             
         Returns:
-            Tuple of (motor_power_percentage, current_error)
+            Tuple of (motor_power_percentage_with_sign, current_error)
         """
-        # Calculate error and delta error
-        current_error = target_position - current_position
-        delta_error = current_error - previous_error
+        # Calculate error and delta error with proper sign
+        current_error = target_position - current_position  # Keep sign for direction
+        error_magnitude = abs(current_error)  # Use absolute error for fuzzy input
+        delta_error = error_magnitude - abs(previous_error)  # Change in error magnitude
         
-        # Set inputs to the fuzzy system
-        self.simulation.input['error'] = current_error
-        self.simulation.input['delta_error'] = delta_error
+        # Determine direction sign
+        direction_sign = 1 if current_error > 0 else -1
         
-        # Compute the result
-        self.simulation.compute()
+        # Set inputs to the fuzzy system (ensure values are in valid range)
+        error_input = max(0, min(36, error_magnitude))
+        delta_input = max(-10, min(10, delta_error))
         
-        # Get the motor power output
-        motor_power = self.simulation.output['motor_power']
+        try:
+            self.simulation.input['error'] = error_input
+            self.simulation.input['delta_error'] = delta_input
+            self.simulation.compute()
+            # Get the motor power output and apply direction sign
+            motor_power_magnitude = self.simulation.output['motor_power']
+            motor_power = motor_power_magnitude * direction_sign
+            
+        except Exception as e:
+            print(f"Fuzzy computation error: {e}")
+            print(f"Inputs: error={error_input}, delta_error={delta_input}")
+            # Fallback: use a basic proportional control with proper sign
+            motor_power_magnitude = min(85.0, max(5.0, error_magnitude * 2.5))  # Minimum 5% for movement
+            motor_power = motor_power_magnitude * direction_sign
+            print(f"Using fallback motor power: {motor_power}% (magnitude: {motor_power_magnitude}%, direction: {direction_sign})")
         
         return motor_power, current_error
     
-    def update_position(self, current_position: float, motor_power_percent: float, direction: int) -> float:
+    def update_position(self, current_position: float, motor_power_percent: float, direction: int, elapsed_time: float = None) -> float:
         """
-        Update elevator position based on motor power using the discrete recursion model
+        Update elevator position based on motor power using the two-stage discrete recursion model
         
         Args:
             current_position: Current position in meters
-            motor_power_percent: Motor power as percentage (0-100)
-            direction: 1 for up, -1 for down
+            motor_power_percent: Motor power as percentage (can be negative for down movement)
+            direction: 1 for up, -1 for down (kept for compatibility, but sign should be in motor_power_percent)
+            elapsed_time: Time elapsed since movement started (for stage selection)
             
         Returns:
             New position in meters
         """
-        # Convert percentage to fraction
+        # Determine k1 based on direction (constantes de ajuste para subida/descida)
+        k1 = self.k1_up if direction > 0 else self.k1_down
+        
+        # Convert percentage to fraction - motor_power_percent should already have the correct sign
         motor_power_fraction = motor_power_percent / 100.0
         
-        # Apply the discrete recursion model from the specification (corrected)
-        # For proper movement, we need to consider direction in the position update
-        position_increment = direction * motor_power_fraction * self.k2
-        new_position = current_position * self.decay_factor + position_increment
+        # Two-stage model based on elapsed time (seguindo fórmula exata do professor)
+        if elapsed_time is not None and elapsed_time <= 2.0:
+            # First 2 seconds: posição_atual = k1 * posição_atual * 0.999 + potência_motor * 0.251287
+            new_position = k1 * current_position * 0.999 + motor_power_fraction * 0.251287
+        else:
+            # After 2 seconds: posição_atual = k1 * posição_atual * 0.9995 + potência_motor * 0.212312
+            new_position = k1 * current_position * 0.9995 + motor_power_fraction * 0.212312
         
         return new_position
     
@@ -241,11 +239,9 @@ class ElevatorFuzzyController:
         target_position = self.get_floor_position(target_floor)
         
         # Determine movement direction
-        direction = 1 if target_position > start_position else -1
-        
-        # Initialize simulation variables
+        direction = 1 if target_position > start_position else -1        # Initialize simulation variables
         current_position = start_position
-        previous_error = target_position - start_position
+        previous_error = abs(target_position - start_position)  # Use absolute error# Keep sign for direction
         
         # Data collection lists
         time_data = []
@@ -258,22 +254,19 @@ class ElevatorFuzzyController:
         while simulation_time <= max_time:
             # Compute fuzzy control
             motor_power, current_error = self.compute_control(current_position, target_position, previous_error)
-            
-            # Check stopping condition
+              # Check stopping condition
             if abs(current_error) <= tolerance:
                 break
-            
-            # Update position
-            current_position = self.update_position(current_position, motor_power, direction)
+              # Update position with elapsed time for two-stage model
+            current_position = self.update_position(current_position, motor_power, direction, simulation_time)
             
             # Store data
             time_data.append(simulation_time)
             position_data.append(current_position)
             error_data.append(current_error)
             motor_power_data.append(motor_power)
-            
-            # Update for next iteration
-            previous_error = current_error
+              # Update for next iteration
+            previous_error = abs(current_error)  # Store absolute error for next iteration
             simulation_time += self.sampling_time
         
         # Calculate performance metrics
@@ -320,9 +313,7 @@ class ElevatorFuzzyController:
 
 if __name__ == "__main__":
     # Create elevator controller
-    controller = ElevatorFuzzyController()
-    
-    # Test simulation - movement from ground floor to 2nd floor
+    controller = ElevatorFuzzyController()    # Test simulation - movement from ground floor to 2nd floor
     print("Testing elevator movement from Terreo to Andar 2...")
     result = controller.simulate_movement('terreo', 'andar_2')
     
@@ -330,8 +321,7 @@ if __name__ == "__main__":
     print(f"Final error: {result['final_error_mm']:.1f} mm")
     print(f"Overshoot: {result['overshoot_percent']:.4f}%")
     print(f"Direction: {result['direction']}")
-    
-    # Plot results
+      # Plot results
     plt.figure(figsize=(12, 8))
     
     plt.subplot(2, 2, 1)
@@ -360,7 +350,7 @@ if __name__ == "__main__":
     plt.subplot(2, 2, 4)
     # Floor layout visualization
     floors = ['Subsolo', 'Terreo', 'Andar 1', 'Andar 2', 'Andar 3', 'Andar 4', 'Andar 5', 'Andar 6', 'Andar 7', 'Andar 8', 'Técnico']
-    positions = [0, 4, 7, 10, 13, 16, 19, 22, 25, 28, 32]
+    positions = [0, 4, 8, 11, 14, 17, 20, 23, 26, 29, 32]  # Corrected positions: técnico = 32m
     plt.barh(range(len(floors)), positions, alpha=0.3)
     plt.axvline(x=result['target_position'], color='r', linestyle='--', label='Target Floor')
     plt.axvline(x=result['position'][-1], color='g', linestyle='-', label='Final Position')

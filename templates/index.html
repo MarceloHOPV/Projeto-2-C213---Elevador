@@ -214,16 +214,16 @@
             'andar_6': '6',
             'andar_7': '7',
             'andar_8': '8'
-        };        const floorPositions = {
-            'terreo': 4,
-            'andar_1': 7,
-            'andar_2': 10,
-            'andar_3': 13,
-            'andar_4': 16,
-            'andar_5': 19,
-            'andar_6': 22,
-            'andar_7': 25,
-            'andar_8': 28
+        };        const floorPositions = {            'terreo': 4,
+            'andar_1': 8,
+            'andar_2': 11,
+            'andar_3': 14,
+            'andar_4': 17,
+            'andar_5': 20,
+            'andar_6': 23,
+            'andar_7': 26,
+            'andar_8': 29,
+            'tecnico': 32
         };
 
         function getCurrentFloorFromPosition(position) {
@@ -331,11 +331,10 @@
                 statusElement.innerHTML = '<i class="fas fa-circle text-danger"></i> Desconectado';
             }
         }        function updatePosition(data) {
-            console.log('DEBUG: Position update received:', data.current_position, 'is_moving:', data.is_moving);
-              // Update position display
+            console.log('DEBUG: Position update received:', data.current_position, 'is_moving:', data.is_moving);            // Update position display
             document.getElementById('current-position').textContent = `${data.current_position.toFixed(2)}m`;
             document.getElementById('motor-power').textContent = `${Math.abs(data.motor_power).toFixed(1)}%`;
-            document.getElementById('position-error').textContent = `${Math.abs(data.error).toFixed(3)}m`;
+            document.getElementById('position-error').textContent = `${data.error >= 0 ? '+' : ''}${data.error.toFixed(3)}m`;
               // Track overshoot during movement
             if (data.is_moving && targetPosition !== null && startPosition !== null) {
                 // Calculate overshoot: distance beyond target in direction of movement
@@ -355,10 +354,9 @@
                 x: timestamp,
                 y: data.current_position,
                 target: data.target_position
-            });
-              motorData.push({
+            });            motorData.push({
                 x: timestamp,
-                y: Math.abs(data.motor_power)
+                y: Math.abs(data.motor_power)  // Show power as positive value
             });
 
             // Keep only last 100 points
@@ -598,12 +596,10 @@
                 legend: {x: 0, y: 1}
             };
 
-            Plotly.newPlot('position-chart', [positionTrace, targetTrace], positionLayout);
-
-            // Initialize motor chart
+            Plotly.newPlot('position-chart', [positionTrace, targetTrace], positionLayout);            // Initialize motor chart
             const motorTrace = {
                 x: data.map(d => new Date(d.timestamp * 1000)),
-                y: data.map(d => Math.abs(d.motor_power)),
+                y: data.map(d => Math.abs(d.motor_power)),  // Show power as positive value
                 type: 'scatter',
                 mode: 'lines',
                 name: 'Potência',
@@ -642,9 +638,8 @@
             
             const buildingViz = document.getElementById('building-viz');
             let html = '<div class="building">';
-            
-            const floors = ['Técnico', '8', '7', '6', '5', '4', '3', '2', '1', 'T', 'Subsolo'];
-            const floorHeights = [32, 28, 25, 22, 19, 16, 13, 10, 7, 4, 0];
+              const floors = ['Técnico', '8', '7', '6', '5', '4', '3', '2', '1', 'T', 'Subsolo'];
+            const floorHeights = [32, 29, 26, 23, 20, 17, 14, 11, 8, 4, 0];
             
             floors.forEach((floor, index) => {
                 const height = floorHeights[index];
