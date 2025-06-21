@@ -28,7 +28,7 @@ class ElevatorFuzzyController:
         self.max_passengers = 13        # Control parameters
         self.sampling_time = 0.2  # 200ms
         self.k1_up = 1.0  # adjustment constant for upward movement
-        self.k1_down = 1.0  # adjustment constant for downward movement (same as up)
+        self.k1_down = -1.0  # adjustment constant for downward movement (negativo para descida)
         self.k2 = 0.251287  # power to position increment conversion factor (from PDF specification)
         self.decay_factor = 0.999  # decay factor from specification (0.999 not 0.9995)
         
@@ -145,12 +145,12 @@ class ElevatorFuzzyController:
         """
         if elapsed_time >= self.startup_duration:
             return None  # Startup phase completed
-        
-        # Linear ramp: 0% → 31.5% over 2 seconds
+          # Linear ramp: 0% → 31.5% over 2 seconds
         # P(t) = (31.5% / 2s) * t = 15.75 * t
         startup_power = (self.startup_max_power / self.startup_duration) * elapsed_time
-          # Apply direction (positive for up, negative for down)
-        return startup_power * direction
+        
+        # Sempre retorna potência positiva - direção é controlada pelo k1 agora
+        return startup_power
     
     def compute_control(self, current_position: float, target_position: float, previous_error: float) -> Tuple[float, float]:
         """
@@ -162,15 +162,12 @@ class ElevatorFuzzyController:
             previous_error: Previous error value for delta calculation
             
         Returns:
-            Tuple of (motor_power_percentage_with_sign, current_error)
+            Tuple of (motor_power_percentage_positive, current_error)
         """
         # Calculate error and delta error with proper sign
         current_error = target_position - current_position  # Keep sign for direction
         error_magnitude = abs(current_error)  # Use absolute error for fuzzy input
         delta_error = error_magnitude - abs(previous_error)  # Change in error magnitude
-        
-        # Determine direction sign
-        direction_sign = 1 if current_error > 0 else -1
         
         # Set inputs to the fuzzy system (ensure values are in valid range)
         error_input = max(0, min(36, error_magnitude))
@@ -180,46 +177,47 @@ class ElevatorFuzzyController:
             self.simulation.input['error'] = error_input
             self.simulation.input['delta_error'] = delta_input
             self.simulation.compute()
-            # Get the motor power output and apply direction sign
-            motor_power_magnitude = self.simulation.output['motor_power']
-            motor_power = motor_power_magnitude * direction_sign
+            # Get the motor power output - sempre positivo agora
+            motor_power = self.simulation.output['motor_power']
             
         except Exception as e:
             print(f"Fuzzy computation error: {e}")
             print(f"Inputs: error={error_input}, delta_error={delta_input}")
-            # Fallback: use a basic proportional control with proper sign
-            motor_power_magnitude = min(85.0, max(5.0, error_magnitude * 2.5))  # Minimum 5% for movement
-            motor_power = motor_power_magnitude * direction_sign
-            print(f"Using fallback motor power: {motor_power}% (magnitude: {motor_power_magnitude}%, direction: {direction_sign})")
+            # Fallback: use a basic proportional control - sempre positivo
+            motor_power = min(85.0, max(5.0, error_magnitude * 2.5))  # Minimum 5% for movement
+            print(f"Using fallback motor power: {motor_power}% (positive)")
         
         return motor_power, current_error
     
     def update_position(self, current_position: float, motor_power_percent: float, direction: int, elapsed_time: float = None) -> float:
         """
         Update elevator position based on motor power using the two-stage discrete recursion model
+        Nova lógica: k1 controla direção, motor_power sempre positivo, aplicar abs() no final
         
         Args:
             current_position: Current position in meters
-            motor_power_percent: Motor power as percentage (can be negative for down movement)
-            direction: 1 for up, -1 for down (kept for compatibility, but sign should be in motor_power_percent)
+            motor_power_percent: Motor power as percentage (sempre positivo)
+            direction: 1 for up, -1 for down (usado para determinar k1)
             elapsed_time: Time elapsed since movement started (for stage selection)
             
         Returns:
-            New position in meters
-        """
-        # Determine k1 based on direction (constantes de ajuste para subida/descida)
+            New position in meters (sempre positivo via abs())
+        """        # k1 controla a direção: k1_up=+1.0 para subida, k1_down=-1.0 para descida
         k1 = self.k1_up if direction > 0 else self.k1_down
         
-        # Convert percentage to fraction - motor_power_percent should already have the correct sign
+        # Motor power sempre positivo (conforme especificação do projeto)
         motor_power_fraction = motor_power_percent / 100.0
         
         # Two-stage model based on elapsed time (seguindo fórmula exata do professor)
         if elapsed_time is not None and elapsed_time <= 2.0:
             # First 2 seconds: posição_atual = k1 * posição_atual * 0.999 + potência_motor * 0.251287
-            new_position = k1 * current_position * 0.999 + motor_power_fraction * 0.251287
+            new_position_raw = k1 * current_position * 0.999 + motor_power_fraction * 0.251287
         else:
             # After 2 seconds: posição_atual = k1 * posição_atual * 0.9995 + potência_motor * 0.212312
-            new_position = k1 * current_position * 0.9995 + motor_power_fraction * 0.212312
+            new_position_raw = k1 * current_position * 0.9995 + motor_power_fraction * 0.212312
+        
+        # Aplicar valor absoluto para garantir posição sempre positiva
+        new_position = abs(new_position_raw)
         
         return new_position
     
