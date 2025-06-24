@@ -244,8 +244,14 @@ class TesteOficial:
             'total_testes': len(self.cenarios),
             'sucessos': sum(1 for r in self.resultados if r['sucesso']),
             'taxa_sucesso_pct': (sum(1 for r in self.resultados if r['sucesso']) / len(self.cenarios)) * 100,
-            'resultados': self.resultados
-        }
+            'resultados': self.resultados        }
+        
+        # Create test results directory if it doesn't exist
+        import os
+        os.makedirs("analysis/test_results", exist_ok=True)
+        
+        # Update filename to save in organized folder
+        nome_arquivo = f"analysis/test_results/resultados_teste_oficial_{timestamp}.json"
         
         try:
             with open(nome_arquivo, 'w', encoding='utf-8') as f:

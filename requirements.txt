@@ -8,3 +8,4 @@ websockets>=10.0
 jinja2>=3.0.0
 python-multipart>=0.0.5
 plotly>=5.0.0
+seaborn>=0.11.0

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuzzy Elevator Controller - Complete Analysis Report</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #2c3e50;
+            margin-top: 25px;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .image-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .image-caption {
+            margin-top: 10px;
+            font-style: italic;
+            color: #6c757d;
+        }
+        .rules-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .rules-table th, .rules-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .rules-table th {
+            background-color: #3498db;
+            color: white;
+        }
+        .info-box {
+            background-color: #e8f4fd;
+            border: 1px solid #3498db;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .stat-label {
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        .code-block {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .toc {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .toc li {
+            padding: 5px 0;
+        }
+        .toc a {
+            text-decoration: none;
+            color: #3498db;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Fuzzy Elevator Controller - Complete Analysis Report</h1>
+        
+        <div class="info-box">
+            <strong>Report Generated:</strong> June 23, 2025<br>
+            <strong>Project:</strong> Projeto-2-C213 - Elevator Fuzzy Control System<br>
+            <strong>Controller Type:</strong> Fuzzy PD Controller with Mamdani Inference
+        </div>
+
+        <div class="toc">
+            <h3>📋 Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">1. System Overview</a></li>
+                <li><a href="#membership">2. Membership Functions (2D)</a></li>
+                <li><a href="#rules">3. Fuzzy Rules Table</a></li>
+                <li><a href="#surface">4. Control Surface (3D)</a></li>
+                <li><a href="#examples">5. Rule Activation Examples</a></li>
+                <li><a href="#analysis">6. Technical Analysis</a></li>
+            </ul>
+        </div>
+
+        <div class="summary-stats">
+            <div class="stat-card">
+                <div class="stat-value">20</div>
+                <div class="stat-label">Total Fuzzy Rules</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">4</div>
+                <div class="stat-label">Error Levels</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">5</div>
+                <div class="stat-label">Delta Error Levels</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">5</div>
+                <div class="stat-label">Power Output Levels</div>
+            </div>
+        </div>
+
+        <section id="overview" class="section">
+            <h2>1. 🏗️ System Overview</h2>
+            <p>This elevator fuzzy controller uses a <strong>Mamdani inference system</strong> with two inputs and one output:</p>
+            <ul>
+                <li><strong>Error (m):</strong> Distance between current and target position (0-36m range)</li>
+                <li><strong>Delta Error (m/s):</strong> Rate of change of error (-10 to +10 range)</li>
+                <li><strong>Motor Power (%):</strong> Output control signal (0-100% range)</li>
+            </ul>
+            
+            <div class="info-box">
+                <strong>Building Specifications:</strong><br>
+                • Height: 36 meters (11 floors)<br>
+                • Max Speed: 1.0 m/s<br>
+                • Sampling Time: 200ms<br>
+                • Direction Control: k1_up = +1.0, k1_down = -1.0
+            </div>
+        </section>
+
+        <section id="membership" class="section">
+            <h2>2. 📈 Membership Functions (2D)</h2>
+            <p>The 2D membership functions define how input values are mapped to linguistic terms:</p>
+              <div class="image-container">
+                <img src="fuzzy_rules/fuzzy_membership_functions_2d.png" alt="2D Membership Functions">
+                <div class="image-caption">
+                    <strong>Figure 1:</strong> 2D membership functions for Error, Delta Error, and Motor Power variables.
+                    Each plot shows how crisp values are converted to fuzzy membership degrees.
+                </div>
+            </div>
+
+            <h3>Membership Function Details:</h3>
+            <ul>
+                <li><strong>Error:</strong> very_small, small, medium, large</li>
+                <li><strong>Delta Error:</strong> negative_large, negative_small, zero, positive_small, positive_large</li>
+                <li><strong>Motor Power:</strong> very_low, low, medium, high, very_high</li>
+            </ul>
+        </section>
+
+        <section id="rules" class="section">
+            <h2>3. 📋 Fuzzy Rules Table</h2>
+            <p>The rule table shows the complete mapping between input combinations and output decisions:</p>
+              <div class="image-container">
+                <img src="fuzzy_rules/fuzzy_rules_table.png" alt="Fuzzy Rules Table">
+                <div class="image-caption">
+                    <strong>Figure 2:</strong> Heatmap visualization of all 20 fuzzy rules.
+                    Darker colors indicate higher motor power levels.
+                </div>
+            </div>
+
+            <div class="info-box">
+                <strong>Rule Logic:</strong> The controller applies higher power when error is large, 
+                and adjusts based on delta error to provide smooth acceleration/deceleration.
+                When delta error is negative (moving towards target), power is reduced for gentle approach.
+            </div>
+        </section>
+
+        <section id="surface" class="section">
+            <h2>4. 🏔️ Control Surface (3D)</h2>
+            <p>The 3D control surface shows the complete behavior of the fuzzy controller across all input combinations:</p>
+              <div class="image-container">
+                <img src="fuzzy_rules/fuzzy_rules_surface.png" alt="3D Control Surface">
+                <div class="image-caption">
+                    <strong>Figure 3:</strong> 3D control surface mapping Error × Delta Error → Motor Power.
+                    This surface represents the complete behavior of the fuzzy inference system.
+                </div>
+            </div>
+
+            <p><strong>Surface Analysis:</strong></p>
+            <ul>
+                <li>Higher elevations indicate higher motor power output</li>
+                <li>Smooth transitions between adjacent regions ensure stable control</li>
+                <li>The surface shape reflects the underlying rule structure</li>
+                <li>Contour lines show iso-power levels for quick analysis</li>
+            </ul>
+        </section>
+
+        <section id="examples" class="section">
+            <h2>5. ⚡ Rule Activation Examples</h2>
+            <p>These examples show how specific input combinations activate different fuzzy rules:</p>            <h3>Example 1: Medium Error, Positive Delta</h3>
+            <div class="image-container">
+                <img src="fuzzy_rules/fuzzy_rules_activation_example_1.png" alt="Rule Activation Example 1">
+                <div class="image-caption">
+                    <strong>Figure 4a:</strong> Error = 5.0m, Delta Error = 2.0m/s (Medium error, positive delta)
+                </div>
+            </div>
+
+            <h3>Example 2: Large Error, Negative Delta</h3>
+            <div class="image-container">
+                <img src="fuzzy_rules/fuzzy_rules_activation_example_2.png" alt="Rule Activation Example 2">
+                <div class="image-caption">
+                    <strong>Figure 4b:</strong> Error = 15.0m, Delta Error = -1.0m/s (Large error, negative delta)
+                </div>
+            </div>
+
+            <h3>Example 3: Small Error, Zero Delta</h3>
+            <div class="image-container">
+                <img src="fuzzy_rules/fuzzy_rules_activation_example_3.png" alt="Rule Activation Example 3">
+                <div class="image-caption">
+                    <strong>Figure 4c:</strong> Error = 0.5m, Delta Error = 0.0m/s (Small error, zero delta)
+                </div>
+            </div>
+
+            <h3>Example 4: Very Large Error, Large Positive Delta</h3>
+            <div class="image-container">
+                <img src="fuzzy_rules/fuzzy_rules_activation_example_4.png" alt="Rule Activation Example 4">
+                <div class="image-caption">
+                    <strong>Figure 4d:</strong> Error = 25.0m, Delta Error = 5.0m/s (Very large error, large positive delta)
+                </div>
+            </div>
+        </section>
+
+        <section id="analysis" class="section">
+            <h2>6. 🔬 Technical Analysis</h2>
+            
+            <h3>Control Strategy</h3>
+            <p>The fuzzy controller implements a sophisticated PD-like control strategy:</p>
+            <ul>
+                <li><strong>Proportional Component:</strong> Error magnitude determines base power level</li>
+                <li><strong>Derivative Component:</strong> Delta error provides anticipatory control</li>
+                <li><strong>Smooth Operation:</strong> Fuzzy inference ensures gradual transitions</li>
+                <li><strong>Direction Awareness:</strong> Negative k1 values handle downward movement</li>
+            </ul>
+
+            <h3>Rule Distribution Analysis</h3>
+            <div class="code-block">
+Rule Count by Power Level:
+• Very Low: 8 rules (40%)
+• Low: 4 rules (20%)  
+• Medium: 4 rules (20%)
+• High: 2 rules (10%)
+• Very High: 2 rules (10%)
+            </div>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li><strong>Conservative Approach:</strong> 60% of rules use low/very low power for safe operation</li>
+                <li><strong>Anticipatory Control:</strong> Delta error prevents overshoot and oscillation</li>
+                <li><strong>Smooth Transitions:</strong> Fuzzy membership functions eliminate abrupt changes</li>
+                <li><strong>Robust Performance:</strong> Multiple rules activate simultaneously for stability</li>
+            </ul>
+
+            <h3>Performance Characteristics</h3>
+            <ul>
+                <li>✅ <strong>Stability:</strong> Smooth control surface prevents oscillations</li>
+                <li>✅ <strong>Efficiency:</strong> Minimal power for small errors</li>
+                <li>✅ <strong>Speed:</strong> High power for large errors</li>
+                <li>✅ <strong>Precision:</strong> Fine control near target position</li>
+            </ul>
+
+            <div class="info-box">
+                <strong>Usage Instructions:</strong><br>
+                To generate these visualizations, run: <code>python plot_rules.py</code><br>
+                Select option 1 for complete analysis or individual options for specific plots.
+            </div>
+        </section>
+
+        <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #6c757d;">
+            <p>Generated by Enhanced Fuzzy Rules Visualization Script</p>
+            <p>Projeto-2-C213 - Sistemas Embarcados</p>
+        </footer>
+    </div>
+</body>
+</html>

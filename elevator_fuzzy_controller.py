@@ -36,46 +36,58 @@ class ElevatorFuzzyController:
         self.startup_duration = 2.0  # 2 seconds startup ramp
         self.startup_max_power = 31.5  # 31.5% maximum power during startup
           # Floor positions (height from ground level)
-        self.floor_positions = self._calculate_floor_positions()
-        
+        self.floor_positions = self._calculate_floor_positions()        
         # Initialize fuzzy system
         self._setup_fuzzy_system()
         
     def _calculate_floor_positions(self) -> dict:
-        """Calculate the position of each floor in meters"""
+        """Calculate the position of each floor in meters
+        
+        Building specification (alturas corretas):
+        - Subsolo: 4m de altura, posição 0m (referência)
+        - Térreo: 4m de altura, posição 4m
+        - Andar 1: 3m de altura, posição 8m (4+4)
+        - Andares 2-8: 3m cada, posições 11m, 14m, 17m, 20m, 23m, 26m, 29m
+        - Técnico: 4m de altura, posição 33m (29+4)
+        """
         positions = {}
-        positions['subsolo'] = 0
-        positions['terreo'] = 4
-          # 1º andar = terreo(4m) + altura do 1º andar(4m) = 8m
-        # Demais andares: 3m cada um após o 1º andar
-        positions['andar_1'] = 8  # Terreo(4m) + 1º andar(4m)
-        for i in range(2, 9):
-            positions[f'andar_{i}'] = 8 + ((i-1) * 3)  # 1º andar(8m) + andares extras(3m cada)
-            
-        positions['tecnico'] = 8 + (7 * 3) + 3  # 1º andar(8m) + 7 andares(21m) + técnico(3m) = 32m
+        positions['subsolo'] = 0        # Referência
+        positions['terreo'] = 4         # 4m
+        positions['andar_1'] = 8        # 4+4=8m
+        positions['andar_2'] = 11       # 8+3=11m
+        positions['andar_3'] = 14       # 11+3=14m
+        positions['andar_4'] = 17       # 14+3=17m
+        positions['andar_5'] = 20       # 17+3=20m
+        positions['andar_6'] = 23       # 20+3=23m
+        positions['andar_7'] = 26       # 23+3=26m
+        positions['andar_8'] = 29       # 26+3=29m
+        positions['tecnico'] = 32       # 29+3=32m (andar 8 tem 3m + técnico 4m)
         
         return positions
     
     def _setup_fuzzy_system(self):
         """Setup the fuzzy control system with membership functions and rules"""
-          # Define input and output variables        # Error range: considering maximum building height displacement (0 to 36m)
+          # Define input and output variables
+        # Error range: considering maximum building height displacement (0 to 36m)
         self.error = ctrl.Antecedent(np.arange(0, 37, 1), 'error')
         
         # Delta error range: rate of change of error
         self.delta_error = ctrl.Antecedent(np.arange(-10, 11, 1), 'delta_error')
-          # Motor power output: 0-100%
-        self.motor_power = ctrl.Consequent(np.arange(0, 101, 1), 'motor_power')        # Define membership functions for error (0 to 36m range) - ajustado para mais sensibilidade
-        self.error['very_small'] = fuzz.trimf(self.error.universe, [0, 0, 0.1])
-        self.error['small'] = fuzz.trimf(self.error.universe, [0.05, 0.21, 0.5])
-        self.error['medium'] = fuzz.trimf(self.error.universe, [0.2, 1.5, 5])
-        self.error['large'] = fuzz.trimf(self.error.universe, [3, 18, 36])
         
-        # Define membership functions for delta error (scaled proportionally to k2)
-        self.delta_error['negative_large'] = fuzz.trimf(self.delta_error.universe, [-10, -3, -0.5])
-        self.delta_error['negative_small'] = fuzz.trimf(self.delta_error.universe, [-1, -0.21, -0.05])
-        self.delta_error['zero'] = fuzz.trimf(self.delta_error.universe, [-0.1, 0, 0.1])
-        self.delta_error['positive_small'] = fuzz.trimf(self.delta_error.universe, [0.05, 0.21, 1])
-        self.delta_error['positive_large'] = fuzz.trimf(self.delta_error.universe, [0.5, 3, 10])
+        # Motor power output: 0-100%
+        self.motor_power = ctrl.Consequent(np.arange(0, 101, 1), 'motor_power')
+          # Define membership functions for error (0 to 36m range) - ajustado para reduzir oscilação
+        self.error['very_small'] = fuzz.trimf(self.error.universe, [0, 0, 0.5])
+        self.error['small'] = fuzz.trimf(self.error.universe, [0.2, 0.5, 1.5])
+        self.error['medium'] = fuzz.trimf(self.error.universe, [1.0, 3.0, 8.0])
+        self.error['large'] = fuzz.trimf(self.error.universe, [5, 18, 36])
+        
+        # Define membership functions for delta error (ajustado para ser menos sensível)
+        self.delta_error['negative_large'] = fuzz.trimf(self.delta_error.universe, [-10, -2, -0.5])
+        self.delta_error['negative_small'] = fuzz.trimf(self.delta_error.universe, [-1, -0.2, -0.05])
+        self.delta_error['zero'] = fuzz.trimf(self.delta_error.universe, [-0.3, 0, 0.3])
+        self.delta_error['positive_small'] = fuzz.trimf(self.delta_error.universe, [0.05, 0.2, 1])
+        self.delta_error['positive_large'] = fuzz.trimf(self.delta_error.universe, [0.5, 2, 10])
         
         # Define membership functions for motor power (otimizado para alcançar ~90% em casos extremos)
         self.motor_power['very_low'] = fuzz.trimf(self.motor_power.universe, [0, 2, 8])
@@ -83,7 +95,8 @@ class ElevatorFuzzyController:
         self.motor_power['medium'] = fuzz.trimf(self.motor_power.universe, [35, 55, 75])
         self.motor_power['high'] = fuzz.trimf(self.motor_power.universe, [65, 78, 88])
         self.motor_power['very_high'] = fuzz.trimf(self.motor_power.universe, [75, 85, 95])
-          # Define fuzzy rules for PD control
+        
+        # Define fuzzy rules for PD control
         self._setup_fuzzy_rules()
         
         # Create control system
@@ -345,8 +358,7 @@ if __name__ == "__main__":
     plt.ylabel('Motor Power (%)')
     plt.grid(True)
     
-    plt.subplot(2, 2, 4)
-    # Floor layout visualization
+    plt.subplot(2, 2, 4)    # Floor layout visualization
     floors = ['Subsolo', 'Terreo', 'Andar 1', 'Andar 2', 'Andar 3', 'Andar 4', 'Andar 5', 'Andar 6', 'Andar 7', 'Andar 8', 'Técnico']
     positions = [0, 4, 8, 11, 14, 17, 20, 23, 26, 29, 32]  # Corrected positions: técnico = 32m
     plt.barh(range(len(floors)), positions, alpha=0.3)
