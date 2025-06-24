@@ -94,7 +94,7 @@ class ElevatorFuzzyController:
         self.motor_power['low'] = fuzz.trimf(self.motor_power.universe, [5, 20, 40])
         self.motor_power['medium'] = fuzz.trimf(self.motor_power.universe, [35, 55, 75])
         self.motor_power['high'] = fuzz.trimf(self.motor_power.universe, [65, 78, 88])
-        self.motor_power['very_high'] = fuzz.trimf(self.motor_power.universe, [75, 85, 95])
+        self.motor_power['very_high'] = fuzz.trimf(self.motor_power.universe, [75, 85, 90])
         
         # Define fuzzy rules for PD control
         self._setup_fuzzy_rules()
@@ -146,16 +146,6 @@ class ElevatorFuzzyController:
             raise ValueError(f"Unknown floor: {floor_name}")
     
     def compute_startup_power(self, elapsed_time: float, direction: int) -> float:
-        """
-        Compute motor power during the linear acceleration startup phase
-        
-        Args:
-            elapsed_time: Time elapsed since movement started (seconds)
-            direction: Movement direction (1 for up, -1 for down)
-            
-        Returns:
-            Motor power percentage during startup (0 to 31.5%)
-        """
         if elapsed_time >= self.startup_duration:
             return None  # Startup phase completed
           # Linear ramp: 0% → 31.5% over 2 seconds
@@ -166,17 +156,6 @@ class ElevatorFuzzyController:
         return startup_power
     
     def compute_control(self, current_position: float, target_position: float, previous_error: float) -> Tuple[float, float]:
-        """
-        Compute the fuzzy control output
-        
-        Args:
-            current_position: Current elevator position in meters
-            target_position: Target elevator position in meters
-            previous_error: Previous error value for delta calculation
-            
-        Returns:
-            Tuple of (motor_power_percentage_positive, current_error)
-        """
         # Calculate error and delta error with proper sign
         current_error = target_position - current_position  # Keep sign for direction
         error_magnitude = abs(current_error)  # Use absolute error for fuzzy input
@@ -203,19 +182,7 @@ class ElevatorFuzzyController:
         return motor_power, current_error
     
     def update_position(self, current_position: float, motor_power_percent: float, direction: int, elapsed_time: float = None) -> float:
-        """
-        Update elevator position based on motor power using the two-stage discrete recursion model
-        Nova lógica: k1 controla direção, motor_power sempre positivo, aplicar abs() no final
-        
-        Args:
-            current_position: Current position in meters
-            motor_power_percent: Motor power as percentage (sempre positivo)
-            direction: 1 for up, -1 for down (usado para determinar k1)
-            elapsed_time: Time elapsed since movement started (for stage selection)
-            
-        Returns:
-            New position in meters (sempre positivo via abs())
-        """        # k1 controla a direção: k1_up=+1.0 para subida, k1_down=-1.0 para descida
+        # k1 controla a direção: k1_up=+1.0 para subida, k1_down=-1.0 para descida
         k1 = self.k1_up if direction > 0 else self.k1_down
         
         # Motor power sempre positivo (conforme especificação do projeto)
@@ -235,17 +202,6 @@ class ElevatorFuzzyController:
         return new_position
     
     def simulate_movement(self, start_floor: str, target_floor: str, max_time: float = 60.0) -> dict:
-        """
-        Simulate elevator movement from start floor to target floor
-        
-        Args:
-            start_floor: Starting floor name
-            target_floor: Target floor name
-            max_time: Maximum simulation time in seconds
-            
-        Returns:
-            Dictionary with simulation results
-        """
         start_position = self.get_floor_position(start_floor)
         target_position = self.get_floor_position(target_floor)
         
@@ -301,7 +257,6 @@ class ElevatorFuzzyController:
         }
     
     def plot_membership_functions(self):
-        """Plot the membership functions for visualization"""
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 10))
         
         # Plot error membership functions
