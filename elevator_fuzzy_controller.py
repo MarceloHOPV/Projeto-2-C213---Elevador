@@ -144,7 +144,7 @@ class ElevatorFuzzyController:
             return None  # Startup phase completed
           # Linear ramp: 0% → 31.5% over 2 seconds
         # P(t) = (31.5% / 2s) * t = 15.75 * t
-        startup_power = (self.startup_max_power / self.startup_duration) * elapsed_time
+        startup_power = 15.75*elapsed_time
         
         # Sempre retorna potência positiva - direção é controlada pelo k1 agora
         return startup_power
