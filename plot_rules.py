@@ -14,36 +14,45 @@ class FuzzyRulesPlotter:
         # Define rule mapping for visualization
         self.error_levels = ['very_small', 'small', 'medium', 'large']
         self.delta_levels = ['negative_large', 'negative_small', 'zero', 'positive_small', 'positive_large']
-        self.power_levels = ['very_low', 'low', 'medium', 'high', 'very_high']
+        self.power_levels = ['low', 'medium', 'high', 'very_high']
         
         # Create rule matrix
         self.rule_matrix = self._create_rule_matrix()
     
     def _create_rule_matrix(self):
         """Create a matrix representation of the fuzzy rules"""
-        power_map = {'very_low': 1, 'low': 2, 'medium': 3, 'high': 4, 'very_high': 5}
+        power_map = {'low': 1, 'medium': 2, 'high': 3, 'very_high': 4}
         matrix = np.zeros((len(self.delta_levels), len(self.error_levels)))
         
+        # Updated rules matching the current elevator_fuzzy_controller.py
         rules = [
+            # Very small error (0-0.8m) - chegando ao destino (regra simples sem delta_error)
+            # Esta regra será representada com 'low' para todos os delta_error para visualização
+            ('very_small', 'negative_large', 'low'),
+            ('very_small', 'negative_small', 'low'),
+            ('very_small', 'zero', 'low'),
+            ('very_small', 'positive_small', 'low'),
             ('very_small', 'positive_large', 'low'),
-            ('very_small', 'positive_small', 'very_low'),
-            ('very_small', 'zero', 'very_low'),
-            ('very_small', 'negative_small', 'very_low'),
-            ('very_small', 'negative_large', 'very_low'),
+            
+            # Small error (~9m) - alvejando ~31.5%
             ('small', 'positive_large', 'medium'),
             ('small', 'positive_small', 'low'),
             ('small', 'zero', 'low'),
-            ('small', 'negative_small', 'very_low'),
-            ('small', 'negative_large', 'very_low'),
+            ('small', 'negative_small', 'low'),
+            ('small', 'negative_large', 'low'),
+            
+            # Medium error (~15m) - alvejando ~45%
             ('medium', 'positive_large', 'high'),
             ('medium', 'positive_small', 'medium'),
             ('medium', 'zero', 'medium'),
-            ('medium', 'negative_small', 'low'),
+            ('medium', 'negative_small', 'medium'),
             ('medium', 'negative_large', 'low'),
+            
+            # Large error (~21m) - alvejando ~85-90%
             ('large', 'positive_large', 'very_high'),
             ('large', 'positive_small', 'very_high'),
             ('large', 'zero', 'very_high'),
-            ('large', 'negative_small', 'medium'),
+            ('large', 'negative_small', 'high'),
             ('large', 'negative_large', 'medium'),
         ]
         
@@ -89,7 +98,7 @@ class FuzzyRulesPlotter:
         ax2.set_ylim(0, 1.05)
         
         # Motor power membership functions
-        power_colors = ['lightblue', 'blue', 'green', 'orange', 'red']
+        power_colors = ['blue', 'green', 'orange', 'red']
         for i, level in enumerate(self.power_levels):
             membership_values = self.controller.motor_power[level].mf
             ax3.plot(self.controller.motor_power.universe, membership_values, 
@@ -109,24 +118,24 @@ class FuzzyRulesPlotter:
         """Plot the rule table as a heatmap"""
         fig, ax = plt.subplots(figsize=(10, 8))
         
-        colors = ['white', '#E3F2FD', '#BBDEFB', '#90CAF9', '#42A5F5', '#1976D2']
+        colors = ['white', '#E3F2FD', '#BBDEFB', '#90CAF9', '#1976D2']
         cmap = plt.cm.colors.ListedColormap(colors)
         
-        im = ax.imshow(self.rule_matrix, cmap=cmap, aspect='auto', vmin=0, vmax=5)
+        im = ax.imshow(self.rule_matrix, cmap=cmap, aspect='auto', vmin=0, vmax=4)
         
         ax.set_xticks(range(len(self.error_levels)))
         ax.set_xticklabels([level.replace('_', ' ').title() for level in self.error_levels])
         ax.set_yticks(range(len(self.delta_levels)))
         ax.set_yticklabels([level.replace('_', ' ').title() for level in self.delta_levels])
         
-        power_names = ['', 'Very Low', 'Low', 'Medium', 'High', 'Very High']
+        power_names = ['', 'Low (~31.5%)', 'Medium (~45%)', 'High (~70%)', 'Very High (~90%)']
         for i in range(len(self.delta_levels)):
             for j in range(len(self.error_levels)):
                 value = int(self.rule_matrix[i, j])
                 if value > 0:
-                    text = power_names[value]
+                    text = power_names[value].split('(')[0].strip()  # Only show the name part
                     ax.text(j, i, text, ha="center", va="center", 
-                           color="white" if value > 3 else "black", fontweight='bold')
+                           color="white" if value > 2 else "black", fontweight='bold')
         
         ax.set_xlabel('Error Level', fontsize=12, fontweight='bold')
         ax.set_ylabel('Delta Error Level', fontsize=12, fontweight='bold')
@@ -134,8 +143,8 @@ class FuzzyRulesPlotter:
                     fontsize=14, fontweight='bold')
         
         cbar = plt.colorbar(im, ax=ax, shrink=0.8)
-        cbar.set_ticks(range(6))
-        cbar.set_ticklabels(['None', 'Very Low', 'Low', 'Medium', 'High', 'Very High'])
+        cbar.set_ticks(range(5))
+        cbar.set_ticklabels(['None', 'Low (~31.5%)', 'Medium (~45%)', 'High (~70%)', 'Very High (~90%)'])
         cbar.set_label('Motor Power Level', fontsize=10, fontweight='bold')
         
         plt.tight_layout()
@@ -248,7 +257,7 @@ class FuzzyRulesPlotter:
                     power_value = self.rule_matrix[j, i]
                     if power_value > 0:
                         power_name = self.power_levels[int(power_value)-1]
-                        rule_text = f"IF {error_level.replace('_', ' ')} AND {delta_level.replace('_', ' ')}"
+                        rule_text = f"IF {error_level.replace('_', ' ')} AND {delta_level.replace('_', ' ')} → {power_name.replace('_', ' ').title()}"
                         active_rules.append(rule_text)
                         rule_strengths.append(rule_strength)
         

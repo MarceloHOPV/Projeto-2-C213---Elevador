@@ -235,8 +235,8 @@ class ElevatorPlotter:
         ax2.legend()
         ax2.grid(True, alpha=0.3)
           # 3. Motor power membership functions
-        power_levels = ['very_low', 'low', 'medium', 'high', 'very_high']
-        power_colors = ['blue', 'green', 'orange', 'red', 'purple']
+        power_levels = ['low', 'medium', 'high', 'very_high']
+        power_colors = ['blue', 'green', 'orange', 'red']
         
         for i, level in enumerate(power_levels):
             membership_values = self.controller.motor_power[level].mf
