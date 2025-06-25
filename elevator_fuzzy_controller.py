@@ -144,7 +144,7 @@ class ElevatorFuzzyController:
             return None  # Startup phase completed
           # Linear ramp: 0% → 31.5% over 2 seconds
         # P(t) = (31.5% / 2s) * t = 15.75 * t
-        startup_power = 15.75*elapsed_time
+        startup_power = 15.75 *elapsed_time
         
         # Sempre retorna potência positiva - direção é controlada pelo k1 agora
         return startup_power
@@ -216,11 +216,11 @@ class ElevatorFuzzyController:
         # Tolerância adaptativa baseada na distância
         distance = abs(target_position - start_position)
         if distance >= 20:  # Movimentos muito longos (>20m)
-            tolerance = 0.39  # 30cm para distâncias muito longas
+            tolerance = 0.039  # 30cm para distâncias muito longas
         elif distance >= 15:  # Movimentos longos (15-20m)
-            tolerance = 0.20  # 20cm para distâncias longas
+            tolerance = 0.020  # 20cm para distâncias longas
         else:  # Movimentos curtos/médios (<15m)
-            tolerance = 0.10  # 10cm para distâncias normais
+            tolerance = 0.010  # 10cm para distâncias normais
             
         max_iterations = int(max_time / self.sampling_time)
         iterations = 0
