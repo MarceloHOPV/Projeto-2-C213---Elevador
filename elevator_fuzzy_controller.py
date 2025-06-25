@@ -69,10 +69,10 @@ class ElevatorFuzzyController:
         """Setup the fuzzy control system with membership functions and rules"""
           # Define input and output variables
         # Error range: considering maximum building height displacement (0 to 30m with extra margin)
-        self.error = ctrl.Antecedent(np.arange(0, 31, 0.20), 'error')
+        self.error = ctrl.Antecedent(np.arange(0, 31, 0.25), 'error')
         
         # Delta error range: rate of change of error
-        self.delta_error = ctrl.Antecedent(np.arange(-10, 11, 0.20), 'delta_error')
+        self.delta_error = ctrl.Antecedent(np.arange(-10, 11, 0.25), 'delta_error')
         
         # Motor power output: 0-100%
         self.motor_power = ctrl.Consequent(np.arange(0, 101, 1), 'motor_power')
@@ -90,7 +90,7 @@ class ElevatorFuzzyController:
         self.delta_error['positive_large'] = fuzz.trimf(self.delta_error.universe, [0.5, 5, 10])
         
         # Define membership functions for motor power - ajustado para acelerar movimentos curtos
-        self.motor_power['low'] = fuzz.trimf(self.motor_power.universe, [20, 40, 50])       # Centro em 40% para acelerar movimentos curtos
+        self.motor_power['low'] = fuzz.trimf(self.motor_power.universe, [10, 40, 50])       # Centro em 40% para acelerar movimentos curtos
         self.motor_power['medium'] = fuzz.trimf(self.motor_power.universe, [45, 55, 65])     # ~55% (15m)  
         self.motor_power['high'] = fuzz.trimf(self.motor_power.universe, [60, 70, 80])       # ~70% intermediário
         self.motor_power['very_high'] = fuzz.trimf(self.motor_power.universe, [75, 85, 90])  # ~85% próximo de 90%
@@ -216,7 +216,7 @@ class ElevatorFuzzyController:
         # Tolerância adaptativa baseada na distância
         distance = abs(target_position - start_position)
         if distance >= 20:  # Movimentos muito longos (>20m)
-            tolerance = 0.30  # 30cm para distâncias muito longas
+            tolerance = 0.39  # 30cm para distâncias muito longas
         elif distance >= 15:  # Movimentos longos (15-20m)
             tolerance = 0.20  # 20cm para distâncias longas
         else:  # Movimentos curtos/médios (<15m)
