@@ -69,10 +69,10 @@ class ElevatorFuzzyController:
         """Setup the fuzzy control system with membership functions and rules"""
           # Define input and output variables
         # Error range: considering maximum building height displacement (0 to 30m with extra margin)
-        self.error = ctrl.Antecedent(np.arange(0, 31, 0.25), 'error')
+        self.error = ctrl.Antecedent(np.arange(0, 31, 0.20), 'error')
         
         # Delta error range: rate of change of error
-        self.delta_error = ctrl.Antecedent(np.arange(-10, 11, 0.25), 'delta_error')
+        self.delta_error = ctrl.Antecedent(np.arange(-10, 11, 0.20), 'delta_error')
         
         # Motor power output: 0-100%
         self.motor_power = ctrl.Consequent(np.arange(0, 101, 1), 'motor_power')
